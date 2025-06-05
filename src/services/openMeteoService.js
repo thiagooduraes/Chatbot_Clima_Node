@@ -1,5 +1,8 @@
 import axios from 'axios';
 import { fetchWeatherApi } from 'openmeteo';
+import { logger } from "../config/logger.js";
+import { openMeteoApiCalls } from "../config/metrics.js";
+import { register } from "prom-client";
 
 async function getClima(lat, lon) {
 
@@ -18,9 +21,19 @@ async function getClima(lat, lon) {
     };
 
     const url = "https://api.open-meteo.com/v1/forecast";
+
+    logger.info("Buscando clima", { 
+        url: url,
+        params: params
+    });
     
     try {
         const response = await axios.get(url, { params: params });
+
+        openMeteoApiCalls.labels('success').inc();
+        logger.info("Informações encontradas", {
+            response: response
+        })
 
         const current = response.data.current;
         
@@ -36,7 +49,11 @@ async function getClima(lat, lon) {
 
         return dadosTempo;
     } catch (error) {
+        openMeteoApiCalls.labels('failure').inc();
         console.error("Erro ao buscar clima:", error);
+        logger.error("Erro ao buscar clima", {
+            error: error
+        })
         return null;
     }
 
